@@ -72,35 +72,44 @@ def load_clean_dataset():
     account, card, client, disp, district, loan, order, trans = load_original_dataset()
 
     account['date'] = convert_date(account['date'])
-    account = account.rename(columns={'date': 'account_date'})
+    account         = account.rename(columns={'date': 'account_date'})
     account['frequency'] = account['frequency'].apply(account_freq) 
 
-    card['issued'] = convert_date(card['issued'])
-    card = card.rename(columns={'issued': 'issued_date', 'type': 'card_type'})
+    card['issued']  = convert_date(card['issued'])
+    card            = card.rename(columns={'issued': 'issued_date', 
+                                    'type': 'card_type'})
 
     client['birth_date'] = convert_date(client['birth_date'])
 
-    disp['type'] = disp['type'].apply(disp_type)
-    disp = disp.rename(columns={'type': 'disp_type'})
+    disp['type']    = disp['type'].apply(disp_type)
+    disp            = disp.rename(columns={'type': 'disp_type'})
 
     order['k_symbol'] = order['k_symbol'].apply(trans_ksymbol)
-    order = order.rename(columns={'k_symbol': 'order_k_symbol'})
-    order = order.drop(columns=["bank_to", "account_to"])
+    order           = order.rename(columns={'k_symbol': 'order_k_symbol'})
+    order           = order.drop(columns=["bank_to", "account_to"])
+    order           = normalize(order, 'order_amount')
     
     trans['k_symbol'] = trans['k_symbol'].apply(trans_ksymbol)
-    trans['type'] = trans['type'].apply(trans_type)
+    trans['type']   = trans['type'].apply(trans_type)
     trans['operation'] = trans['operation'].apply(trans_operation)
-    trans['date'] = convert_date(trans['date'])
-    trans = trans.drop(columns=["bank", "account"])
-    trans = trans.rename(columns={"k_symbol": "trans_k_symbol", 
+    trans['date']   = convert_date(trans['date'])
+    trans           = trans.drop(columns=["bank", "account"])
+    trans           = trans.rename(columns={"k_symbol": "trans_k_symbol", 
                             "type": "trans_type", "operation": "trans_operation",
                             "date": "trans_date"})
+    trans           = normalize(trans, "trans_amount", "trans_balance")
 
-    loan['date'] = convert_date(loan['date'])
-    loan = loan.rename(columns = {"date": "loan_date"})
+    loan['date']    = convert_date(loan['date'])
+    loan            = loan.rename(columns = {"date": "loan_date"})
+    loan = normalize(loan, "loan_amount", "duration", "payments")
 
-    district = district.fillna(district.mean())
-    district = district.rename(columns = {"A2": "district_name", 
+    district['A12'] = district['A12'].fillna(eliminate_outliers(district['A12']).mean())
+    district['A15'] = district['A15'].fillna(eliminate_outliers(district['A15']).mean())
+
+    district = normalize(district, 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10', 'A11',
+        'A12', 'A13', 'A14', 'A15', 'A16')
+
+    district        = district.rename(columns = {"A2": "district_name", 
         "A3": "region", "A4": "no_of_inhibitants", 
         "A5": "no_of_municipalities_with_inhabitants_less_than_499",
         "A6": "no_of_municipalities_with_inhabitants_between_500_to_1999",
@@ -147,16 +156,16 @@ def load_clean_numerical_dataset():
     account, card, client, disp, district, loan, order, trans = load_clean_dataset()
 
     account['frequency'] = account['frequency'].astype('category').cat.codes
-    card['card_type'] = card['card_type'].astype('category').cat.codes
-    client['gender'] = client['gender'].astype('category').cat.codes
-    disp['disp_type'] = disp['disp_type'].astype('category').cat.codes
+    card['card_type']   = card['card_type'].astype('category').cat.codes
+    client['gender']    = client['gender'].astype('category').cat.codes
+    disp['disp_type']   = disp['disp_type'].astype('category').cat.codes
 
     district['district_name'] = district['district_name'].astype('category').cat.codes
-    district['region'] = district['region'].astype('category').cat.codes
+    district['region']  = district['region'].astype('category').cat.codes
 
-    loan['status'] = loan['status'].astype('category').cat.codes
+    loan['status']      = loan['status'].astype('category').cat.codes
     order['order_k_symbol'] = order['order_k_symbol'].astype('category').cat.codes
-    trans['trans_type'] = trans['trans_type'].astype('category').cat.codes
+    trans['trans_type']     = trans['trans_type'].astype('category').cat.codes
     trans['trans_operation'] = trans['trans_operation'].astype('category').cat.codes
     trans['trans_k_symbol'] = trans['trans_k_symbol'].astype('category').cat.codes
 

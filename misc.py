@@ -13,7 +13,6 @@ def check_for_any_missing_values(data):
     return data.isnull().values.any()
 
 
-
 def convert_date(data):
     """
     This function converts date from string to datetime objects
@@ -24,7 +23,34 @@ def convert_date(data):
     data = pd.to_datetime(data, format='%Y-%m-%d')
     return data
 
-# translate Czech to English
+def eliminate_outliers(df):
+    """
+    This function removes the entire row(s) where outliers are found in the
+    the dataframe/series and return an array of remaining rows 
+    Arg:
+        df: pandas dataframe
+    """
+    Q1 = df.quantile(0.25)
+    Q3 = df.quantile(0.75)
+    IQR = Q3 - Q1
+
+    condition = (df >= Q1 - 1.5*IQR) & (df <= Q3 + 1.5*IQR)
+    return df[condition].values
+
+def normalize(df, *argv):
+    """
+    This function normalizes numerical data using min-max normalization 
+    """
+    for arg in argv:
+        x = df[arg].values
+        x_scaled = (x - x.min())/(x.max()-x.min())
+        df[arg] = x_scaled
+    return df
+
+
+# ----------------------------------------------------------------
+# translate Czech to English 
+# ----------------------------------------------------------------
 trans_type = lambda s: 'credit' if s == 'PRIJEM' else 'withdrawal' 
 disp_type = lambda s: 'owner' if s == "OWNER" else 'user'
 
