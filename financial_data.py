@@ -54,45 +54,110 @@ def load_clean_dataset():
 
     order:
     - translate k_symbol from Czech to English
+    - drop "bank_to" and "account_to" columns
 
     trans:
     - replace date from string to datetime objects
     - translate type, operation, k_symbol from Czech to English
-    - operation, k_symbol, bank, account
+    - drop "bank" and "account" columns
+
 
     loan:
     - replace date from string to datetime objects
 
     district:
-    - A12, A15: missing value
+    - replace missing values in A12, A15 with average value
     """
 
     account, card, client, disp, district, loan, order, trans = load_original_dataset()
 
     account['date'] = convert_date(account['date'])
+    account = account.rename(columns={'date': 'account_date'})
     account['frequency'] = account['frequency'].apply(account_freq) 
 
     card['issued'] = convert_date(card['issued'])
+    card = card.rename(columns={'issued': 'issued_date', 'type': 'card_type'})
+
     client['birth_date'] = convert_date(client['birth_date'])
+
     disp['type'] = disp['type'].apply(disp_type)
+    disp = disp.rename(columns={'type': 'disp_type'})
+
     order['k_symbol'] = order['k_symbol'].apply(trans_ksymbol)
+    order = order.rename(columns={'k_symbol': 'order_k_symbol'})
+    order = order.drop(columns=["bank_to", "account_to"])
     
     trans['k_symbol'] = trans['k_symbol'].apply(trans_ksymbol)
     trans['type'] = trans['type'].apply(trans_type)
     trans['operation'] = trans['operation'].apply(trans_operation)
+    trans['date'] = convert_date(trans['date'])
+    trans = trans.drop(columns=["bank", "account"])
+    trans = trans.rename(columns={"k_symbol": "trans_k_symbol", 
+                            "type": "trans_type", "operation": "trans_operation",
+                            "date": "trans_date"})
 
     loan['date'] = convert_date(loan['date'])
+    loan = loan.rename(columns = {"date": "loan_date"})
+
+    district = district.fillna(district.mean())
+    district = district.rename(columns = {"A2": "district_name", 
+        "A3": "region", "A4": "no_of_inhibitants", 
+        "A5": "no_of_municipalities_with_inhabitants_less_than_499",
+        "A6": "no_of_municipalities_with_inhabitants_between_500_to_1999",
+        "A7": "no_of_municipalities_with_inhabitants_between_1000_to_9999",
+        "A8": "no_of_municipalities_with_inhabitants_greater_than_10000",
+        "A9": "no_of_cities", "A10": "ratio_of_urban_inhabitants",
+        "A11": "average_salary", "A12": "unemployment_rate_95",
+        'A13': "unemployment_rate_96", "A14": "no_of_enterpreneurs_per_1000_inhabitants",
+        "A15": "no_of_commited_crimes_95", "A16": "no_of_commited_crimes_96"})
 
     return account, card, client, disp, district, loan, order, trans
 
-# def load_clean_numerical_dataset():
-#     """
-#     This function returns numerical only dataset (good for ML models that 
-#     only take in numerical values)
-    
-#     """
+def load_clean_numerical_dataset():
+    """
+    This function returns numerical only dataset (good for ML models that 
+    only take in numerical values) by using label encoding for categorical data.
 
-#     account, card, client, disp, district, loan, order, trans = load_clean_dataset()
+    account:
+    - frequency (account_id, district_id, date)
 
+    card:
+    - type (card_id, disp_id, issued)
 
-#     return account, card, client, disp, district, loan, order, trans
+    client:
+    - gender (client_id, birth_date, district_id)
+
+    disp:
+    - type (disp_id, client_id, account_id)
+
+    district:
+    - A2:district name, A3:region (district_id)
+
+    loan:
+    - status (loan_id, account_id, date)
+
+    order:
+    - k_symbol (order_id, account_id)
+
+    trans:
+    - type, operation, k_symbol (trans_id, account_id, date)
+
+    """
+
+    account, card, client, disp, district, loan, order, trans = load_clean_dataset()
+
+    account['frequency'] = account['frequency'].astype('category').cat.codes
+    card['card_type'] = card['card_type'].astype('category').cat.codes
+    client['gender'] = client['gender'].astype('category').cat.codes
+    disp['disp_type'] = disp['disp_type'].astype('category').cat.codes
+
+    district['district_name'] = district['district_name'].astype('category').cat.codes
+    district['region'] = district['region'].astype('category').cat.codes
+
+    loan['status'] = loan['status'].astype('category').cat.codes
+    order['order_k_symbol'] = order['order_k_symbol'].astype('category').cat.codes
+    trans['trans_type'] = trans['trans_type'].astype('category').cat.codes
+    trans['trans_operation'] = trans['trans_operation'].astype('category').cat.codes
+    trans['trans_k_symbol'] = trans['trans_k_symbol'].astype('category').cat.codes
+
+    return account, card, client, disp, district, loan, order, trans
