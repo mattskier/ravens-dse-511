@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import sqlite3 as sql
 from misc import *
@@ -170,3 +171,44 @@ def load_clean_numerical_dataset():
     trans['trans_k_symbol'] = trans['trans_k_symbol'].astype('category').cat.codes
 
     return account, card, client, disp, district, loan, order, trans
+
+def load_combined():
+    """
+    This file takes all of the directories shown in load clean data() and creates a combined table
+    Details are included in the jupyter notebook as part of main()
+    """
+    account, card, client, disp, district, loan, order, trans = load_clean_dataset()
+    
+    #First combine the dispondent and card accounts (as card is the only account not attached to account_id)
+    dispcard = pd.merge(disp, card, on = 'disp_id', how = 'left')
+    
+    #set account id by index for merging purposes, then add data
+    account = account.set_index('account_id')
+    account['clients'] = dispcard.groupby('account_id')['disp_id'].agg('count')
+    account['num_cards']=dispcard.groupby('account_id')['card_id'].agg('count')    
+    account['card_issued'] = dispcard.groupby('account_id')['issued_date'].min()    
+    
+    #Apply gender/age data only to account owners
+    owners = disp[disp['disp_type']=='owner']
+    owners = owners.join(client.set_index('client_id'), on='client_id', how = 'left')
+    account['owner_gender'] = owners.groupby('account_id')['gender'].max() 
+    account['owner_birth'] = owners.groupby('account_id')['birth_date'].max()
+    
+    #split transactions into credits and withdrawals, add count and sum by account
+    credits = trans[trans['trans_type']=='credit']
+    withdrawals = trans[trans['trans_type']=='withdrawal']
+    account['num_credits']=credits.groupby('account_id')['trans_amount'].agg('count')    
+    account['total_credits']=credits.groupby('account_id')['trans_amount'].sum()
+    account['num_withdrawals']=withdrawals.groupby('account_id')['trans_amount'].agg('count')
+    account['withdrawal_total']=withdrawals.groupby('account_id')['trans_amount'].sum()
+    
+    account['num_orders'] = order.groupby('account_id')['order_amount'].agg('count')
+    account['order_total'] = order.groupby('account_id')['order_amount'].sum()
+    account['card_issued'].fillna(np.datetime64('1900-01-01'), inplace = True)
+    
+    loan_account = loan.join(account, on = 'account_id', how = 'left')
+    combined = loan_account.join(district.set_index('district_id'), on = 'district_id', how = 'left')
+    
+    return combined
+
+    
