@@ -172,14 +172,22 @@ def load_clean_numerical_dataset():
 
     return account, card, client, disp, district, loan, order, trans
 
-def load_combined():
+def load_combined(numeric=False):
     """
-    This file takes all of the directories shown in load clean data() and creates a combined table
+    This function combines all of the tables from load_clean_data() and return a combined table
     Details are included in the jupyter notebook as part of main()
-    """
-    account, card, client, disp, district, loan, order, trans = load_clean_dataset()
     
-    #First combine the dispondent and card accounts (as card is the only account not attached to account_id)
+    Optical arg:
+        numeric: boolean (True/False)
+                 set to True for numeric only dataset 
+    """
+    
+    if numeric == True:
+        account, card, client, disp, district, loan, order, trans = load_clean_numerical_dataset()
+    else:
+        account, card, client, disp, district, loan, order, trans = load_clean_dataset()
+    
+    #First combine the disposition and card tables (as card is the only account not attached to account_id)
     dispcard = pd.merge(disp, card, on = 'disp_id', how = 'left')
     
     #set account id by index for merging purposes, then add data
@@ -208,6 +216,7 @@ def load_combined():
     
     loan_account = loan.join(account, on = 'account_id', how = 'left')
     combined = loan_account.join(district.set_index('district_id'), on = 'district_id', how = 'left')
+    combined = combined.drop(columns=['loan_id', 'account_id', 'district_id'])
     
     return combined
 
